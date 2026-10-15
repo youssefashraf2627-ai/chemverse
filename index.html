@@ -9688,10 +9688,8 @@
             // تفريغ الحاوية
             container.innerHTML = "";
 
-            // 3. الدمج
-            let allSubjects = [];
-            if (dynamicSubjects) allSubjects = [...dynamicSubjects, ...staticList];
-            else allSubjects = staticList;
+            // المواد تأتي من Supabase فقط؛ لا تعرض أي قوائم مواد ثابتة داخل الموقع.
+            const allSubjects = dynamicSubjects || [];
 
             if (allSubjects.length === 0) {
                 container.innerHTML = `<div class="col-span-full text-center py-12 opacity-50"><h3 class="text-xl font-bold text-gray-400">لا توجد مواد حالياً</h3></div>`;
@@ -9738,11 +9736,8 @@
             // عرض علامة تحميل مؤقتة
             container.innerHTML = '<div class="col-span-full text-center py-10"><i class="fas fa-circle-notch fa-spin text-4xl text-cuGreen-500"></i></div>';
 
-            // 1. تحديد القائمة الستاتيك (القديمة) المناسبة بناءً على الترم المختار
-            let staticSubjects = [];
-            if (term === 'الفصل الدراسي الأول') staticSubjects = typeof semester1Subjects !== 'undefined' ? semester1Subjects : [];
-            else if (term === 'الفصل الدراسي الثاني') staticSubjects = typeof semester2Subjects !== 'undefined' ? semester2Subjects : [];
-            else if (term === 'متطلبات الجامعة') staticSubjects = typeof uniRequirementsSubjects !== 'undefined' ? uniRequirementsSubjects : [];
+            // لا توجد مواد ثابتة؛ لوحة التحكم هي المصدر الوحيد للمواد.
+            const staticSubjects = [];
 
             // 2. جلب المواد الديناميك (الجديدة) من Supabase
             const {
@@ -9760,11 +9755,8 @@
             // تفريغ الحاوية قبل الرسم
             container.innerHTML = "";
 
-            // 3. دمج المصفوفتين (القديم + الجديد)
-            // نبدأ بالجديد عشان يظهر في الأول (اختياري)
-            let allSubjects = [];
-            if (dynamicSubjects) allSubjects = [...dynamicSubjects, ...staticSubjects];
-            else allSubjects = staticSubjects;
+            // عرض المواد التي أضافها المسؤول من لوحة التحكم فقط.
+            const allSubjects = dynamicSubjects || [];
 
             // 4. رسم الكل
             if (allSubjects.length === 0) {
@@ -11162,9 +11154,7 @@
                 });
             };
 
-            addStatic(semester1Subjects, 'الفرقة الأولى - ترم أول');
-            addStatic(semester2Subjects, 'الفرقة الأولى - ترم ثاني');
-            addStatic(uniRequirementsSubjects, 'متطلبات جامعة');
+            // لا نضيف أي مواد ثابتة إلى البحث؛ البحث من قاعدة البيانات فقط.
 
             // 2. إضافة الأقسام العامة والبرامج المتخصصة
             const processDeptObj = (deptObj, deptName) => {
@@ -11178,8 +11168,7 @@
                 }
             };
 
-            for (let dept in departmentCurricula) processDeptObj(departmentCurricula[dept], dept);
-            for (let prog in specializedCurricula) processDeptObj(specializedCurricula[prog], prog);
+            // تم تعطيل قوائم المواد الثابتة القديمة.
 
             // 3. جلب المواد الديناميكية من الداتا بيز (Supabase)
             const {
@@ -12247,57 +12236,77 @@
     }
     if (typeof switchView === 'function') switchView('dept-selection-view');
   };
-  const firstYearSubjects = {
-    'الفصل الدراسي الأول': ['أساسيات الكيمياء الفيزيائية','خواص مادة وحرارة','تحليل حجمي ووزني','أسس علم نبات','كيمياء بيئية','تحليل طيفي','جبر','مهنة التعليم وأدوار المعلم','علم نفس','عربي','منهج مدرسي','تواصل صفي'],
-    'الفصل الدراسي الثاني': ['كيمياء مجموعات رئيسية','بصريات هندسية وصوت','كيمياء عضوية','كيمياء غير عضوية','علم الحيوان','جيولوجيا','علوم بيئية','قيادة تربوية','تربية مستدامة','علم نفس النمو','تاريخ مصر','تدريب ميداني','إنجليزي']
-  };
-  const secondYearSubjects = {
-    'الفصل الدراسي الأول': ['كيمياء العناصر الانتقالية','اللافلزات واللانثانيدات والأكتينيدات','ديناميكا حرارية','كيمياء الحالات الصلبة','كيمياء عضوية متقدمة','تطبيقات علوم النانو','تطبيقات علوم النانو (عملي)','استراتيجيات التعلم النشط','مبادئ ذوي الاحتياجات الخاصة','التربية الخاصة','اتجاهات حديثة في إعداد المعلم والجودة التعليمية','المناهج التعليمية','مهارات تدريس نوعية وتطبيقات تعليمية','تدريس مصغر','الكيمياء غير العضوية'],
-    'الفصل الدراسي الثاني': ['المجموعات الفلزية والكيمياء اللاعضوية','مقرر فيزياء وميكانيكا الكم','ميكانيكية التفاعلات العضوية','كيمياء المركبات غير العضوية','الكيمياء التنسيقية','كيمياء عضوية تطبيقية','كيمياء علاجية','ميكانيكية التفاعلات غير العضوية','تقييم التعلم','الفروق الفردية والقياس النفسي في المجال التربوي','سيكولوجية التعلم والإبداع','تدريس مصغر','تطبيقات واستراتيجيات الاتصال في التعليم والبحث']
-  };
-  window.showSubjectsPage = function(term) {
-    if (term === 'متطلبات الجامعة') return;
+  // جميع المواد تُدار حصريًا من لوحة dashboard.html عبر Supabase.
+  window.showSubjectsPage = async function(term) {
     lastSelectedSubjectCategory = term;
     const titleEl = document.getElementById('subjects-page-title');
-    if (titleEl) titleEl.innerText = `${lastSelectedYear} - ${term}`;
     const container = document.getElementById('subjects-container');
-    if (container) {
-      const subjects = lastSelectedYear === 'الفرقة الأولى' ? (firstYearSubjects[term] || []) : (lastSelectedYear === 'الفرقة الثانية' ? (secondYearSubjects[term] || []) : []);
-      if (!subjects.length) {
-        container.innerHTML = emptyMarkup;
-      } else {
-        container.innerHTML = subjects.map(name => {
-          let icon = name.includes('كيمياء') || name.includes('تحليل') ? 'fa-flask' :
-                     (name.includes('بصريات') || name === 'صوت' ? 'fa-wave-square' :
-                     (name.includes('جبر') ? 'fa-calculator' :
-                     (name.includes('نبات') || name.includes('حيوان') ? 'fa-leaf' : 'fa-book-open')));
-          return `<div class="group bg-dark-800 p-6 rounded-xl border border-gray-700 text-center transition-all duration-300 hover:-translate-y-2 hover:shadow-xl relative">
-            <div class="w-14 h-14 mx-auto mb-4 flex items-center justify-center pro-icon-container rounded-2xl border border-gray-600"><i class="fas ${icon} text-2xl text-gray-400 group-hover:text-white transition-colors"></i></div>
-            <h4 class="text-lg font-bold text-gray-200 group-hover:text-white mb-2">${name}</h4>
-          </div>`;
-        }).join('');
-      }
-    }
+    if (titleEl) titleEl.innerText = `${lastSelectedYear} - ${term}`;
+    if (container) container.innerHTML = '<div class="col-span-full text-center py-10 text-gray-400">جارٍ تحميل المواد...</div>';
     if (typeof switchView === 'function') switchView('subjects-view');
+    try {
+      const { data, error } = await sb.from('subjects').select('*')
+        .eq('year_level', lastSelectedYear).eq('term', term)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      if (!container) return;
+      if (!data || !data.length) {
+        container.innerHTML = '<div class="col-span-full text-center py-12 text-gray-500">لا توجد مواد مضافة حاليًا. يمكن للمسؤول إضافتها من لوحة التحكم.</div>';
+        return;
+      }
+      container.innerHTML = data.map(subject => {
+        const icon = (subject.name || '').includes('كيمياء') ? 'fa-flask' : 'fa-book-open';
+        const hasLink = !!(subject.link && subject.link.trim());
+        return `<div onclick="showSemesterPage('${String(subject.name||'').replace(/'/g,"\\'")}', '${String(subject.link||'').replace(/'/g,"\\'")}', ${hasLink})" class="group bg-dark-800 p-6 rounded-xl border border-gray-700 text-center cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:shadow-xl relative">
+          ${subject.code ? `<span class="absolute top-2 right-2 text-xs">${subject.code}</span>` : ''}
+          <div class="w-14 h-14 mx-auto mb-4 flex items-center justify-center pro-icon-container rounded-2xl border border-gray-600"><i class="fas ${icon} text-2xl text-gray-400"></i></div>
+          <h4 class="text-lg font-bold text-gray-200 mb-2">${subject.name}</h4>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      if (container) container.innerHTML = `<div class="col-span-full text-center py-8 text-red-400">تعذر تحميل المواد: ${String(e.message || e)}</div>`;
+    }
   };
+
+  async function renderManagedSubjects({year, department, semester, title}) {
+    const titleEl = document.getElementById('department-subjects-title');
+    const subtitleEl = document.getElementById('department-subjects-subtitle');
+    const container = document.getElementById('department-subjects-container');
+    if (titleEl) titleEl.innerText = title || `${year} - ${semester}`;
+    if (subtitleEl) subtitleEl.innerText = 'المواد المضافة من لوحة التحكم';
+    if (container) container.innerHTML = '<div class="col-span-full text-center py-10 text-gray-400">جارٍ تحميل المواد...</div>';
+    if (typeof switchView === 'function') switchView('department-subjects-view');
+    try {
+      let query = sb.from('subjects').select('*').eq('year_level', year).eq('term', semester);
+      if (department) query = query.eq('department', department);
+      const {data, error} = await query.order('created_at', {ascending:false});
+      if (error) throw error;
+      if (!container) return;
+      if (!data || !data.length) {
+        container.innerHTML = '<div class="col-span-full text-center py-12 text-gray-500">لا توجد مواد مضافة حاليًا. أضف المادة من لوحة التحكم.</div>';
+        return;
+      }
+      container.innerHTML = data.map(subject => {
+        const icon = (subject.name || '').includes('كيمياء') ? 'fa-flask' : 'fa-book';
+        const hasLink = !!(subject.link && subject.link.trim());
+        const name = String(subject.name || '').replace(/'/g, "\\'");
+        const link = String(subject.link || '').replace(/'/g, "\\'");
+        return `<div onclick="showSemesterPage('${name}', '${link}', ${hasLink})" class="group bg-dark-800 p-6 rounded-xl border border-gray-700 text-center cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:shadow-xl relative">
+          ${subject.code ? `<span class="absolute top-2 right-2 text-xs">${subject.code}</span>` : ''}
+          <div class="w-14 h-14 mx-auto mb-4 flex items-center justify-center pro-icon-container rounded-2xl border border-gray-600"><i class="fas ${icon} text-2xl text-gray-400"></i></div>
+          <h4 class="text-lg font-bold text-gray-200 mb-2">${subject.name}</h4>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      if (container) container.innerHTML = `<div class="col-span-full text-center py-8 text-red-400">تعذر تحميل المواد: ${String(e.message || e)}</div>`;
+    }
+  }
   window.showDepartmentSemester = async function(year, dept, semester) {
     lastSelectedYear = year;
-    const titleEl = document.getElementById('department-subjects-title');
-    const subtitleEl = document.getElementById('department-subjects-subtitle');
-    const container = document.getElementById('department-subjects-container');
-    if (titleEl) titleEl.innerText = `${year} - ${semester}`;
-    if (subtitleEl) subtitleEl.innerText = 'لا توجد مواد مضافة';
-    if (container) container.innerHTML = emptyMarkup;
-    if (typeof switchView === 'function') switchView('department-subjects-view');
+    return renderManagedSubjects({year, department:dept, semester, title:`${dept} - ${year} - ${semester}`});
   };
   window.showSpecializedProgramSubjects = async function(year, program, semester) {
-    const titleEl = document.getElementById('department-subjects-title');
-    const subtitleEl = document.getElementById('department-subjects-subtitle');
-    const container = document.getElementById('department-subjects-container');
-    if (titleEl) titleEl.innerText = `${year} - ${semester}`;
-    if (subtitleEl) subtitleEl.innerText = 'لا توجد مواد مضافة';
-    if (container) container.innerHTML = emptyMarkup;
-    if (typeof switchView === 'function') switchView('department-subjects-view');
+    return renderManagedSubjects({year, department:program, semester, title:`${program} - ${year} - ${semester}`});
   };
 })();
 </script>
