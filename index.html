@@ -1531,97 +1531,127 @@
 </div>
 <script>
         // ============================================
-        // بداية كود SUPABASE ونظام تسجيل الدخول (النسخة الكاملة والمعدلة)
+        // Supabase Auth — Google login + persistent profile UI
         // ============================================
-
-        // 1. إعداد الاتصال (تم تغيير الاسم لـ sb لمنع التضارب)
-        const supabaseUrl = 'https://tithatfxtifjfamkmdcn.supabase.co';
-        const supabaseKey = 'sb_publishable_8PQ08Qm3ousRtCw5oxkCVQ_ibk8Tz7O';
-        const sb = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseUrl = 'https://tfjhcorwtgvduhwebsxj.supabase.co';
+        const supabaseKey = 'sb_publishable_5vYCEuBoG_Ayh69cdtchiA_fjVjvysb';
+        const sb = window.supabase.createClient(supabaseUrl, supabaseKey, {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true
+            }
+        });
 
         let currentUser = null;
+        let authListenerRegistered = false;
 
-        // 2. تشغيل عند تحميل الصفحة
         window.addEventListener('load', () => {
             checkUserSession();
         });
 
-        // 3. إدارة جلسة المستخدم
         async function checkUserSession() {
-            const {
-                data: {
-                    session
-                }
-            } = await sb.auth.getSession();
-            handleUserUI(session);
+            try {
+                const { data, error } = await sb.auth.getSession();
+                if (error) console.error('Supabase getSession:', error);
+                handleUserUI(data?.session || null);
 
-            sb.auth.onAuthStateChange((event, session) => {
-                handleUserUI(session);
+                if (!authListenerRegistered) {
+                    authListenerRegistered = true;
+                    sb.auth.onAuthStateChange((event, session) => {
+                        handleUserUI(session || null);
 
-                if (event === 'SIGNED_IN') {
-                    const returnHash = localStorage.getItem('return_hash');
-                    if (returnHash) {
-                        localStorage.removeItem('return_hash');
-                        const viewId = returnHash.substring(1);
-                        if (ALL_VIEWS.includes(viewId)) {
-                            switchView(viewId, false);
+                        // OAuth can return with INITIAL_SESSION rather than SIGNED_IN after reload.
+                        if (session && ['SIGNED_IN', 'INITIAL_SESSION', 'TOKEN_REFRESHED'].includes(event)) {
+                            const returnHash = localStorage.getItem('return_hash');
+                            if (returnHash) {
+                                localStorage.removeItem('return_hash');
+                                const viewId = returnHash.replace(/^#/, '');
+                                if (Array.isArray(ALL_VIEWS) && ALL_VIEWS.includes(viewId)) {
+                                    switchView(viewId, false);
+                                }
+                            }
                         }
-                    }
+                    });
                 }
-            });
+            } catch (error) {
+                console.error('تعذر استعادة جلسة Supabase:', error);
+            }
         }
 
+        function getUserDisplayName(user) {
+            const meta = user?.user_metadata || {};
+            return meta.full_name || meta.name || meta.user_name ||
+                (user?.email ? user.email.split('@')[0] : 'طالب CHEM-VIRSE');
+        }
 
-        // 4. تحديث الواجهة (إظهار/إخفاء الأزرار)
+        function getUserAvatar(user) {
+            const meta = user?.user_metadata || {};
+            return meta.avatar_url || meta.picture || '';
+        }
+
+        function queueOneSignal(action, userId) {
+            try {
+                if (Array.isArray(window.OneSignalDeferred)) {
+                    window.OneSignalDeferred.push(async function(OneSignal) {
+                        try {
+                            if (action === 'login' && userId) await OneSignal.login(userId);
+                            if (action === 'logout') await OneSignal.logout();
+                        } catch (e) {
+                            console.warn('OneSignal غير متاح حاليًا:', e);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('OneSignal initialization skipped:', e);
+            }
+        }
+
         function handleUserUI(session) {
             const authBtn = document.getElementById('auth-btn');
             const avatarBtn = document.getElementById('user-avatar-btn');
             const sidebarLink = document.getElementById('sidebar-profile-link');
             const loginModal = document.getElementById('login-modal');
 
-            if (session) {
-                // --- حالة: الطالب مسجل دخول ---
+            if (session && session.user) {
                 currentUser = session.user;
-
-                // 🔔 ربط الطالب الحالي بنظام إشعارات OneSignal 🔔
-                window.OneSignalDeferred.push(async function(OneSignal) {
-                    await OneSignal.login(currentUser.id);
-                });
+                queueOneSignal('login', currentUser.id);
 
                 if (authBtn) authBtn.classList.add('hidden');
                 if (avatarBtn) {
                     avatarBtn.classList.remove('hidden');
                     const avatarImg = document.getElementById('header-avatar');
-                    if (avatarImg) avatarImg.src = currentUser.user_metadata.avatar_url;
+                    if (avatarImg) {
+                        const avatar = getUserAvatar(currentUser);
+                        if (avatar) avatarImg.src = avatar;
+                        else avatarImg.removeAttribute('src');
+                    }
                 }
                 if (sidebarLink) sidebarLink.classList.remove('hidden');
                 if (loginModal) loginModal.classList.add('hidden');
 
-                // تعبئة بيانات صفحة البروفايل
                 const pName = document.getElementById('profile-name');
                 const pEmail = document.getElementById('profile-email');
                 const pImg = document.getElementById('profile-img');
+                if (pName) pName.innerText = getUserDisplayName(currentUser);
+                if (pEmail) pEmail.innerText = currentUser.email || '';
+                if (pImg) {
+                    const avatar = getUserAvatar(currentUser);
+                    if (avatar) pImg.src = avatar;
+                    else pImg.removeAttribute('src');
+                }
 
-                if (pName) pName.innerText = currentUser.user_metadata.full_name;
-                if (pEmail) pEmail.innerText = currentUser.email;
-                if (pImg) pImg.src = currentUser.user_metadata.avatar_url;
-
-                // استدعاء البيانات الخاصة بالطالب
-                fetchStudentCode();
-                fetchNotes();
-                fetchUserResults();
-
-                // فحص إذا كان الطالب قد هرب من امتحان بسبب الريفريش
-                checkAbandonedExams();
-
-            } else {
-                // --- حالة: الطالب زائر ---
-                currentUser = null;
-
-                // 🔔 فك ارتباط الإشعارات لو الطالب عمل تسجيل خروج 🔔
-                window.OneSignalDeferred.push(async function(OneSignal) {
-                    await OneSignal.logout();
+                // Load profile data after auth has been restored.
+                Promise.resolve().then(() => {
+                    if (!currentUser) return;
+                    fetchStudentCode();
+                    fetchNotes();
+                    fetchUserResults();
+                    checkAbandonedExams();
                 });
+            } else {
+                currentUser = null;
+                queueOneSignal('logout');
 
                 if (authBtn) authBtn.classList.remove('hidden');
                 if (avatarBtn) avatarBtn.classList.add('hidden');
@@ -1629,42 +1659,52 @@
             }
         }
 
-        // 5. دوال تسجيل الدخول والخروج
         async function signInWithGoogle() {
-            localStorage.setItem('return_hash', window.location.hash);
-            await sb.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + window.location.pathname
+            try {
+                localStorage.setItem('return_hash', window.location.hash || '#main-view');
+                const { data, error } = await sb.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        // Must also be listed in Supabase Authentication > URL Configuration.
+                        redirectTo: window.location.origin + window.location.pathname
+                    }
+                });
+                if (error) throw error;
+                if (data?.url) window.location.assign(data.url);
+            } catch (error) {
+                console.error('Google sign-in failed:', error);
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'تعذّر تسجيل الدخول',
+                        text: error?.message || 'راجع إعدادات Google في Supabase ثم حاول مرة أخرى',
+                        background: '#1e293b',
+                        color: '#fff'
+                    });
+                } else {
+                    alert('تعذّر تسجيل الدخول باستخدام Google. راجع إعدادات Supabase وحاول مرة أخرى.');
                 }
-            });
+            }
         }
 
         async function signOut() {
-            await sb.auth.signOut();
+            const { error } = await sb.auth.signOut();
+            if (error) console.error('Supabase signOut:', error);
             const Toast = Swal.mixin({
                 toast: true,
                 position: 'top-end',
                 showConfirmButton: false,
                 timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
+                timerProgressBar: true
             });
-            Toast.fire({
-                icon: 'success',
-                title: 'تم تسجيل الخروج بنجاح'
-            });
-
+            Toast.fire({ icon: 'success', title: 'تم تسجيل الخروج بنجاح' });
             showHomePage();
         }
 
         function toggleLoginModal() {
             const modal = document.getElementById('login-modal');
             const box = document.getElementById('login-box');
-
+            if (!modal || !box) return;
             if (modal.classList.contains('hidden')) {
                 modal.classList.remove('hidden');
                 setTimeout(() => box.classList.remove('scale-95'), 10);
