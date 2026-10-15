@@ -1,16 +1,17 @@
-CAIRO SCIVERSE — النسخة المعدلة للربط بـ Supabase الجديد
+CHEM-VIRSE — لوحة التحكم
 
-تم تحديث index.html لاستخدام مشروع Supabase:
-https://tithatfxtifjfamkmdcn.supabase.co
+الملفات في جذر الموقع مباشرة، ولا تحتاج إلى نقلها من مجلد داخلي.
 
-الخطوات:
-1) افتح Supabase > SQL Editor > New query.
-2) افتح supabase-schema.sql، انسخ محتواه بالكامل، الصقه في SQL Editor واضغط Run.
-3) ارفع كل محتويات هذا المجلد إلى جذر مستودع GitHub (Root)، وليس ملف ZIP فقط.
-4) إذا كان Vercel متصلًا بمستودع GitHub، انتظر انتهاء النشر ثم افتح الموقع.
+تشغيل لوحة التحكم:
+1) ارفع جميع ملفات ZIP إلى جذر الاستضافة كما هي بعد فك الضغط.
+2) افتح Supabase > SQL Editor وشغّل supabase-schema.sql (إن لم يكن قد شُغّل سابقًا).
+3) شغّل supabase-admin-schema.sql.
+4) أنشئ حساب المسؤول من Supabase Authentication > Users أو من صفحة dashboard.html.
+5) انسخ UUID الخاص بحساب المسؤول من Authentication > Users، ثم نفّذ في SQL Editor مع استبدال UUID:
+   insert into public.admin_users(user_id) values ('USER-UUID-HERE');
+   لا تشارك UUID أو بيانات الدخول علنًا. لا تضف المستخدمين العاديين إلى admin_users.
+6) افتح /dashboard.html وسجّل الدخول بحساب المسؤول.
 
-تنبيه:
-- مفتاح sb_publishable_ مستخدم في index.html وهو مفتاح واجهة عام، وليس secret/service_role.
-- يجب ضبط سياسات المصادقة وRLS قبل إضافة بيانات حقيقية.
-- ملف SQL ينشئ الجداول الأساسية فقط ولا يضيف محتوى المواد أو الامتحانات أو الأخبار.
-- dashboard.html لوحة منفصلة للمنتجات والطلبات، وتطلب Project URL والمفتاح من داخل الصفحة. ملف SQL الأصلي للمنتجات والطلبات كان منفصلًا؛ تمت إضافة الجداول التعليمية إلى schema.
+الميزات: إدارة المواد بحسب الفرقة والفصل، إنشاء وتعديل الاختبارات، إضافة أسئلة الاختيار من متعدد، نشر وتعديل وحذف الإعلانات، عرض وحذف نوت الطلاب، ورفع ملفات وربطها بالمادة.
+
+مهم: لوحة التحكم تستخدم Supabase الحالي الموجود في index.html. لا تضع service_role أو secret key في المتصفح. تشغيل لوحة الإدارة يحتاج تنفيذ ملف SQL أعلاه وإضافة UUID للمسؤول يدويًا. ملفات Storage ترفع إلى bucket باسم course-files الذي ينشئه SQL.
