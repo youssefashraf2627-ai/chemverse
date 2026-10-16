@@ -9796,6 +9796,18 @@
         }
 
         function showSemesterPage(title, link, hasLink) {
+            // حفظ مصدر فتح المادة لضمان أن زر العودة يرجع للقائمة الصحيحة.
+            const sourceView = ALL_VIEWS.find(id => {
+                const el = document.getElementById(id);
+                return el && !el.classList.contains('hidden') && el.offsetParent !== null;
+            }) || '';
+            window.__chemverseSubjectReturn = {
+                sourceView,
+                year: lastSelectedYear,
+                dept: lastSelectedDept,
+                category: lastSelectedSubjectCategory,
+                departmentTitle: document.getElementById('department-subjects-title')?.innerText || ''
+            };
             const titleEl = document.getElementById('semester-title');
             const messageEl = document.getElementById('semester-message');
             const linkEl = document.getElementById('semester-drive-link');
@@ -9825,28 +9837,25 @@
                 }
             }
 
-            // ============================================================
-            // تصحيح زر العودة (The Fix)
-            // ============================================================
+            // زر العودة يعتمد على المصدر الفعلي لفتح المادة، وليس على بيانات قديمة.
             const backBtn = document.getElementById('semester-back-btn');
+            const returnInfo = window.__chemverseSubjectReturn || {};
             if (backBtn) {
-                if (lastSelectedYear === 'الفرقة الأولى') {
-                    backBtn.setAttribute('onclick', `showSubjectsPage('${lastSelectedSubjectCategory}')`);
-                } else {
-                    // تحديد اسم الترم الحالي من عنوان الصفحة
-                    let semName = "";
-                    const deptTitle = document.getElementById('department-subjects-title');
-                    if (deptTitle && deptTitle.innerText.includes('الأول')) semName = 'الفصل الدراسي الأول';
-                    else semName = 'الفصل الدراسي الثاني';
-
-                    // التحقق: هل الفصل الدراسي الحالي موجود ضمن قائمة البرامج المتخصصة؟
-                    // إذا كان برنامج متخصص -> نستخدم دالة البرامج المتخصصة
-                    // إذا كان قسم عام -> نستخدم دالة الأقسام العامة
-                    if (specializedPrograms.includes(lastSelectedDept)) {
-                        backBtn.setAttribute('onclick', `showSpecializedProgramSubjects('${lastSelectedYear}', '${lastSelectedDept}', '${semName}')`);
+                if (returnInfo.sourceView === 'subjects-view' || returnInfo.year === 'الفرقة الأولى') {
+                    const category = returnInfo.category || lastSelectedSubjectCategory || 'الفصل الدراسي الأول';
+                    backBtn.onclick = () => showSubjectsPage(category);
+                } else if (returnInfo.sourceView === 'department-subjects-view') {
+                    const semName = (returnInfo.departmentTitle || '').includes('الأول')
+                        ? 'الفصل الدراسي الأول' : 'الفصل الدراسي الثاني';
+                    const year = returnInfo.year || lastSelectedYear;
+                    const dept = returnInfo.dept || lastSelectedDept;
+                    if (typeof specializedPrograms !== 'undefined' && specializedPrograms.includes(dept)) {
+                        backBtn.onclick = () => showSpecializedProgramSubjects(year, dept, semName);
                     } else {
-                        backBtn.setAttribute('onclick', `showDepartmentSemester('${lastSelectedYear}', '${lastSelectedDept}', '${semName}')`);
+                        backBtn.onclick = () => showDepartmentSemester(year, dept, semName);
                     }
+                } else {
+                    backBtn.onclick = () => showHomePage();
                 }
             }
 
