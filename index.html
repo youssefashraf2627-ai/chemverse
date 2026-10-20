@@ -1522,6 +1522,7 @@
         });
 
         let currentUser = null;
+        let currentUserAvatar = '';
         let authListenerRegistered = false;
 
         window.addEventListener('load', () => {
@@ -1565,7 +1566,31 @@
 
         function getUserAvatar(user) {
             const meta = user?.user_metadata || {};
-            return meta.avatar_url || meta.picture || '';
+            return currentUserAvatar || meta.avatar_url || meta.picture || '';
+        }
+
+        // The custom avatar is stored in public.profiles.avatar_url, not user_metadata.
+        // Restore it from the database whenever a session is loaded so it survives refresh/login.
+        async function loadSavedProfileAvatar(user) {
+            if (!user?.id) return;
+            try {
+                const { data, error } = await sb.from('profiles')
+                    .select('avatar_url')
+                    .eq('id', user.id)
+                    .maybeSingle();
+                if (error) throw error;
+                if (!currentUser || currentUser.id !== user.id) return;
+                currentUserAvatar = data?.avatar_url || '';
+                const avatar = getUserAvatar(currentUser);
+                ['profile-img', 'header-avatar'].forEach(id => {
+                    const img = document.getElementById(id);
+                    if (!img) return;
+                    if (avatar) img.src = avatar;
+                    else img.removeAttribute('src');
+                });
+            } catch (e) {
+                console.warn('تعذر تحميل صورة الحساب المحفوظة:', e);
+            }
         }
 
         function queueOneSignal(action, userId) {
@@ -1593,6 +1618,7 @@
 
             if (session && session.user) {
                 currentUser = session.user;
+                currentUserAvatar = '';
                 queueOneSignal('login', currentUser.id);
 
                 if (authBtn) authBtn.classList.add('hidden');
@@ -1619,7 +1645,8 @@
                     else pImg.removeAttribute('src');
                 }
 
-                // Load profile data after auth has been restored.
+                // Restore the custom avatar saved in Supabase, then load other profile data.
+                loadSavedProfileAvatar(currentUser);
                 Promise.resolve().then(() => {
                     if (!currentUser) return;
                     fetchStudentCode();
@@ -1629,6 +1656,7 @@
                 });
             } else {
                 currentUser = null;
+                currentUserAvatar = '';
                 queueOneSignal('logout');
 
                 if (authBtn) authBtn.classList.remove('hidden');
@@ -1706,6 +1734,7 @@
             const {error}=await sb.storage.from('profile-avatars').upload(path,file,{upsert:true,contentType:file.type});if(error)throw error;
             const {data}=sb.storage.from('profile-avatars').getPublicUrl(path);const url=data.publicUrl;
             const {error:pe}=await sb.from('profiles').upsert({id:currentUser.id,avatar_url:url});if(pe)throw pe;
+            currentUserAvatar=url;currentUser={...currentUser,user_metadata:{...(currentUser.user_metadata||{}),avatar_url:url}};
             ['profile-img','header-avatar'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=url});if(msg)msg.textContent='تم تحديث صورة الحساب.';
             }catch(e){if(msg)msg.textContent='تعذر رفع الصورة: '+(e.message||e)+' — تأكد من إنشاء bucket باسم profile-avatars وصلاحيات الرفع.';}
         }
