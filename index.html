@@ -10592,6 +10592,21 @@
                 return;
             }
 
+            // طلب اسم الطالب قبل بدء أي اختبار
+            const namePrompt = await Swal.fire({
+                title: 'اكتب اسمك قبل الاختبار',
+                input: 'text',
+                inputLabel: 'اسم الطالب بالكامل',
+                inputPlaceholder: 'اكتب اسمك هنا',
+                inputValue: (currentUser.user_metadata && currentUser.user_metadata.full_name) || '',
+                inputValidator: value => !value || !value.trim() ? 'اكتب اسمك أولًا' : undefined,
+                showCancelButton: true,
+                confirmButtonText: 'متابعة', cancelButtonText: 'إلغاء',
+                background: '#1e293b', color: '#fff'
+            });
+            if (!namePrompt.isConfirmed) return;
+            window.quizStudentName = namePrompt.value.trim();
+
             // فحص أمني من السيرفر مباشرة لتأكيد عدم الدخول المسبق
             Swal.fire({
                 title: 'جاري التحقق...',
@@ -10936,10 +10951,11 @@
             } = await sb.from('quiz_results').insert([{
                 user_id: currentUser.id,
                 quiz_id: examState.quizId,
-                student_name: currentUser.user_metadata.full_name,
+                student_name: window.quizStudentName || currentUser.user_metadata.full_name || currentUser.email,
                 quiz_title: quizTitle,
                 score: score,
-                total_score: totalMarks
+                total_score: totalMarks,
+                review_details: examState.questions.map((q, index) => ({ question: cleanLatexInput(q.question_text), answer: (q.question_type === 'mcq' ? (examState.answers[q.id] ? cleanLatexInput(q['option_' + examState.answers[q.id]]) : 'لم يتم الإجابة') : (examState.answers[q.id] || 'لم يتم الإجابة')), correct_answer: (q.question_type === 'mcq' ? cleanLatexInput(q['option_' + q.correct_option]) : 'إجابة مقالية'), correct: (q.question_type === 'mcq' ? examState.answers[q.id] == q.correct_option : !!(examState.answers[q.id] || '').trim()) }))
             }]).select();
 
             if (error) {
