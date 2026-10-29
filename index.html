@@ -9436,6 +9436,13 @@
         }
 
         function switchView(showId, pushToHistory = true) {
+            // إخفاء زر واتساب وزر الوضع الفاتح/الداكن داخل صفحة المساعد الذكي فقط
+            const floatingWhatsApp = document.getElementById('whatsapp-btn');
+            const themeToggle = document.getElementById('site-theme-toggle');
+            const isAssistantPage = showId === 'ai-view';
+            if (floatingWhatsApp) floatingWhatsApp.style.display = isAssistantPage ? 'none' : '';
+            if (themeToggle) themeToggle.style.display = isAssistantPage ? 'none' : '';
+
             // إضافة نظام حماية الخروج من الامتحان
             if (typeof examState !== 'undefined' && examState.inProgress && showId !== 'active-quiz-view') {
                 Swal.fire({
@@ -9613,9 +9620,6 @@
 
         function showAiPage() {
             switchView('ai-view');
-            // الكود ده هيخفي الزرار لما تفتح الـ AI
-            const waBtn = document.getElementById('whatsapp-btn');
-            if (waBtn) waBtn.style.display = 'none';
         }
 
         function showYear1Page() {
